@@ -1,10 +1,10 @@
 package de.dafuqs.matchbooks.recipe.matchbook;
 
 import com.google.gson.*;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.network.PacketByteBuf;
 import java.util.*;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.world.item.ItemStack;
 
 /**
  * Mode defines how nbt is filtered.
@@ -27,7 +27,7 @@ public class Matchbook {
             return true;
         }
 
-        NbtCompound nbt = stack.getNbt();
+        CompoundTag nbt = stack.getTag();
         return switch (mode) {
             case AND -> matches.stream().allMatch(match -> match.matches(nbt));
             case OR -> matches.stream().anyMatch(match -> match.matches(nbt));
@@ -43,7 +43,7 @@ public class Matchbook {
         return EMPTY;
     }
 
-    public void write(PacketByteBuf buf) {
+    public void write(FriendlyByteBuf buf) {
         if(isEmpty()) {
             buf.writeBoolean(true);
         } else {
@@ -54,7 +54,7 @@ public class Matchbook {
         }
     }
 
-    public static Matchbook fromByteBuf(PacketByteBuf buf) {
+    public static Matchbook fromByteBuf(FriendlyByteBuf buf) {
         if(buf.readBoolean()) {
             return empty();
         }
@@ -64,7 +64,7 @@ public class Matchbook {
         var list = new ArrayList<Match>();
 
         for (int i = 0; i < size; i++) {
-            var name = buf.readString();
+            var name = buf.readUtf();
 
             var factoryOptional = MatchFactory.getForPacket(name);
             factoryOptional.ifPresent(factory -> list.add(factory.fromPacket(buf)));

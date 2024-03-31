@@ -3,8 +3,9 @@ package de.dafuqs.matchbooks.recipe.matchbook;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import de.dafuqs.matchbooks.recipe.RecipeParser;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.network.PacketByteBuf;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.network.FriendlyByteBuf;
 
 public class EnchantmentMatch extends Match {
     public static final String TYPE = "enchantment";
@@ -19,7 +20,7 @@ public class EnchantmentMatch extends Match {
     }
 
     @Override
-    boolean matches(NbtCompound nbt) {
+    boolean matches(CompoundTag nbt) {
         if(nbt != null && nbt.contains(key)) {
             if (singular) {
 
@@ -46,7 +47,7 @@ public class EnchantmentMatch extends Match {
         return false;
     }
 
-    boolean testEnchantment(NbtCompound nbt) {
+    boolean testEnchantment(CompoundTag nbt) {
         var level = nbt.getShort("lvl");
         var id = nbt.getString("id");
 
@@ -62,11 +63,11 @@ public class EnchantmentMatch extends Match {
     }
 
     @Override
-    void configure(PacketByteBuf buf) {
+    void configure(FriendlyByteBuf buf) {
         singular = buf.readBoolean();
         minLevel = buf.readInt();
         maxLevel = buf.readInt();
-        enchantmentId = buf.readString();
+        enchantmentId = buf.readUtf();
     }
 
     @Override
@@ -82,11 +83,11 @@ public class EnchantmentMatch extends Match {
     }
 
     @Override
-    void write(PacketByteBuf buf) {
+    void write(FriendlyByteBuf buf) {
         buf.writeBoolean(singular);
         buf.writeInt(minLevel);
         buf.writeInt(maxLevel);
-        buf.writeString(enchantmentId);
+        buf.writeUtf(enchantmentId);
     }
 
     public static class Factory extends MatchFactory<EnchantmentMatch> {
@@ -104,8 +105,8 @@ public class EnchantmentMatch extends Match {
         }
 
         @Override
-        public EnchantmentMatch fromPacket(PacketByteBuf buf) {
-            var match = new EnchantmentMatch(name, buf.readString());
+        public EnchantmentMatch fromPacket(FriendlyByteBuf buf) {
+            var match = new EnchantmentMatch(name, buf.readUtf());
             match.configure(buf);
 
             return match;

@@ -3,8 +3,8 @@ package de.dafuqs.matchbooks.recipe.matchbook;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import de.dafuqs.matchbooks.recipe.RecipeParser;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.network.PacketByteBuf;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.FriendlyByteBuf;
 
 public class ByteMatch extends Match {
     public static final String TYPE = "byte";
@@ -16,7 +16,7 @@ public class ByteMatch extends Match {
     }
 
     @Override
-    boolean matches(NbtCompound nbt) {
+    boolean matches(CompoundTag nbt) {
         if(nbt != null && nbt.contains(key)) {
             return nbt.getByte(key) == targetByte;
         }
@@ -30,7 +30,7 @@ public class ByteMatch extends Match {
     }
 
     @Override
-    void configure(PacketByteBuf buf) {
+    void configure(FriendlyByteBuf buf) {
         targetByte = buf.readByte();
     }
 
@@ -44,7 +44,7 @@ public class ByteMatch extends Match {
     }
 
     @Override
-    void write(PacketByteBuf buf) {
+    void write(FriendlyByteBuf buf) {
         buf.writeByte(targetByte);
     }
 
@@ -63,8 +63,8 @@ public class ByteMatch extends Match {
         }
 
         @Override
-        public ByteMatch fromPacket(PacketByteBuf buf) {
-            var match = new ByteMatch(name, buf.readString());
+        public ByteMatch fromPacket(FriendlyByteBuf buf) {
+            var match = new ByteMatch(name, buf.readUtf());
             match.configure(buf);
 
             return match;

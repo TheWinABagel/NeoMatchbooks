@@ -2,18 +2,18 @@ package de.dafuqs.matchbooks.recipe;
 
 import com.google.gson.*;
 import de.dafuqs.matchbooks.recipe.matchbook.Matchbook;
-import net.minecraft.inventory.Inventory;
-import net.minecraft.item.ItemConvertible;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.network.PacketByteBuf;
-import net.minecraft.recipe.Ingredient;
-import net.minecraft.util.collection.DefaultedList;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import net.minecraft.core.NonNullList;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.world.Container;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.level.ItemLike;
 
 @SuppressWarnings("unused")
 public final class IngredientStack {
@@ -21,17 +21,17 @@ public final class IngredientStack {
     public static final IngredientStack EMPTY = new IngredientStack(Ingredient.EMPTY, Matchbook.empty(), Optional.empty(), 0);
     private final Ingredient ingredient;
     private final Matchbook matchbook;
-    private final Optional<NbtCompound> recipeViewNbt;
+    private final Optional<CompoundTag> recipeViewNbt;
     private final int count;
 
-    private IngredientStack(@NotNull Ingredient ingredient, @NotNull Matchbook matchbook, Optional<NbtCompound> recipeViewNbt, int count) {
+    private IngredientStack(@NotNull Ingredient ingredient, @NotNull Matchbook matchbook, Optional<CompoundTag> recipeViewNbt, int count) {
         this.ingredient = ingredient;
         this.matchbook = matchbook;
         this.recipeViewNbt = recipeViewNbt;
         this.count = count;
     }
 
-    public static IngredientStack of(@NotNull Ingredient ingredient, @NotNull Matchbook matchbook, @Nullable NbtCompound recipeViewNbt, int count) {
+    public static IngredientStack of(@NotNull Ingredient ingredient, @NotNull Matchbook matchbook, @Nullable CompoundTag recipeViewNbt, int count) {
         if(ingredient.isEmpty()) {
             return EMPTY;
         }
@@ -42,20 +42,20 @@ public final class IngredientStack {
         return of(ingredient, Matchbook.empty(), null, 1);
     }
 
-    public static IngredientStack ofItems(ItemConvertible... items) {
-        return of(Ingredient.ofItems(items), Matchbook.empty(), null, 1);
+    public static IngredientStack ofItems(ItemLike... items) {
+        return of(Ingredient.of(items), Matchbook.empty(), null, 1);
     }
 
-    public static IngredientStack ofItems(int count, ItemConvertible... items) {
-        return of(Ingredient.ofItems(items), Matchbook.empty(), null, count);
+    public static IngredientStack ofItems(int count, ItemLike... items) {
+        return of(Ingredient.of(items), Matchbook.empty(), null, count);
     }
 
     public static IngredientStack ofStacks(ItemStack... stacks) {
-        return of(Ingredient.ofStacks(stacks), Matchbook.empty(), null, 1);
+        return of(Ingredient.of(stacks), Matchbook.empty(), null, 1);
     }
 
     public static IngredientStack ofStacks(int count, ItemStack... stacks) {
-        return of(Ingredient.ofStacks(stacks), Matchbook.empty(), null, count);
+        return of(Ingredient.of(stacks), Matchbook.empty(), null, count);
     }
 
     public boolean test(ItemStack stack) {
@@ -74,8 +74,8 @@ public final class IngredientStack {
         return  matchbook;
     }
 
-    public void write(PacketByteBuf buf) {
-        ingredient.write(buf);
+    public void write(FriendlyByteBuf buf) {
+        ingredient.toNetwork(buf);
         matchbook.write(buf);
         buf.writeBoolean(recipeViewNbt.isPresent());
         recipeViewNbt.ifPresent(buf::writeNbt);
@@ -91,11 +91,11 @@ public final class IngredientStack {
         return main;
     }
 
-    public static IngredientStack fromByteBuf(PacketByteBuf buf) {
-        return new IngredientStack(Ingredient.fromPacket(buf), Matchbook.fromByteBuf(buf), buf.readBoolean() ? Optional.ofNullable(buf.readNbt()) : Optional.empty(), buf.readInt());
+    public static IngredientStack fromByteBuf(FriendlyByteBuf buf) {
+        return new IngredientStack(Ingredient.fromNetwork(buf), Matchbook.fromByteBuf(buf), buf.readBoolean() ? Optional.ofNullable(buf.readNbt()) : Optional.empty(), buf.readInt());
     }
 
-    public static List<IngredientStack> decodeByteBuf(PacketByteBuf buf, int size) {
+    public static List<IngredientStack> decodeByteBuf(FriendlyByteBuf buf, int size) {
         List<IngredientStack> ingredients = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
             ingredients.add(fromByteBuf(buf));
@@ -104,14 +104,14 @@ public final class IngredientStack {
     }
 
     public List<ItemStack> getStacks() {
-        var stacks = ingredient.getMatchingStacks();
+        var stacks = ingredient.getItems();
 
         if (stacks == null)
             return new ArrayList<>();
 
         return Arrays.stream(stacks)
                 .peek(stack -> stack.setCount(count))
-                .peek(stack -> recipeViewNbt.ifPresent(stack::setNbt))
+                .peek(stack -> recipeViewNbt.ifPresent(stack::setTag))
                 .collect(Collectors.toList());
     }
 
@@ -127,8 +127,8 @@ public final class IngredientStack {
         return this == EMPTY || ingredient.isEmpty();
     }
 
-    public static DefaultedList<Ingredient> listIngredients(List<IngredientStack> ingredients) {
-        DefaultedList<Ingredient> preview = DefaultedList.ofSize(ingredients.size(), Ingredient.EMPTY);
+    public static NonNullList<Ingredient> listIngredients(List<IngredientStack> ingredients) {
+        NonNullList<Ingredient> preview = NonNullList.withSize(ingredients.size(), Ingredient.EMPTY);
         for (int i = 0; i < ingredients.size(); i++) {
             preview.set(i, ingredients.get(i).getIngredient());
         }
@@ -136,10 +136,10 @@ public final class IngredientStack {
     }
 
 
-    public static boolean matchInvExclusively(Inventory inv, List<IngredientStack> ingredients, int size, int offset) {
+    public static boolean matchInvExclusively(Container inv, List<IngredientStack> ingredients, int size, int offset) {
         List<ItemStack> invStacks = new ArrayList<>(size);
         for (int i = offset; i < size + offset; i++) {
-            invStacks.add(inv.getStack(i));
+            invStacks.add(inv.getItem(i));
         }
         AtomicInteger matches = new AtomicInteger();
         ingredients.forEach(ingredient -> {
@@ -159,10 +159,10 @@ public final class IngredientStack {
         return matches.get() == size;
     }
 
-    public static void decrementExclusively(Inventory inv, List<IngredientStack> ingredients, int size, int offset) {
+    public static void decrementExclusively(Container inv, List<IngredientStack> ingredients, int size, int offset) {
         List<ItemStack> invStacks = new ArrayList<>(size);
         for (int i = offset; i < size + offset; i++) {
-            invStacks.add(inv.getStack(i));
+            invStacks.add(inv.getItem(i));
         }
         ingredients.forEach(ingredient -> {
             for (int i = 0; i < invStacks.size(); i++) {
@@ -171,7 +171,7 @@ public final class IngredientStack {
                 }
                 ItemStack stack = invStacks.get(i);
                 if(ingredient.test(stack)) {
-                    stack.decrement(ingredient.count);
+                    stack.shrink(ingredient.count);
                     invStacks.remove(i);
                     break;
                 }

@@ -1,22 +1,22 @@
 package de.dafuqs.matchbooks.recipe;
 
 import de.dafuqs.matchbooks.Matchbooks;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.network.PacketByteBuf;
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.Registry;
-import net.minecraft.registry.entry.RegistryEntry;
-import net.minecraft.registry.tag.TagKey;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import java.util.*;
 import java.util.stream.Collectors;
+import net.minecraft.core.Holder;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 
 @SuppressWarnings("unused")
 public class OptionalStack {
 
-    public static final TagKey<Item> EMPTY_FOLLY = TagKey.of(Registries.ITEM.getKey(), Matchbooks.id("empty_item_folly"));
+    public static final TagKey<Item> EMPTY_FOLLY = TagKey.create(BuiltInRegistries.ITEM.key(), Matchbooks.id("empty_item_folly"));
     public static final OptionalStack EMPTY = new OptionalStack(EMPTY_FOLLY, 0);
 
     @NotNull
@@ -24,7 +24,7 @@ public class OptionalStack {
     @NotNull
     private final ItemStack stack;
     private final int count;
-    private static final Registry<Item> REGISTRY = Registries.ITEM;
+    private static final Registry<Item> REGISTRY = BuiltInRegistries.ITEM;
 
 
     private List<ItemStack> cachedStacks = null;
@@ -41,27 +41,27 @@ public class OptionalStack {
         this.count = count;
     }
 
-    public void write(PacketByteBuf buf) {
+    public void write(FriendlyByteBuf buf) {
         getStacks();
         buf.writeInt(cachedStacks.size());
         for (ItemStack cachedStack : cachedStacks) {
-            buf.writeItemStack(cachedStack);
+            buf.writeItem(cachedStack);
         }
         buf.writeInt(count);
     }
 
-    public static OptionalStack fromByteBuf(PacketByteBuf buf) {
+    public static OptionalStack fromByteBuf(FriendlyByteBuf buf) {
         List<ItemStack> stacks = new ArrayList<>();
         int size = buf.readInt();
         for (int i = 0; i < size; i++) {
-            stacks.add(buf.readItemStack());
+            stacks.add(buf.readItem());
         }
         OptionalStack folly = new OptionalStack(ItemStack.EMPTY, buf.readInt());
         folly.cachedStacks = stacks;
         return folly;
     }
 
-    public static List<OptionalStack> decodeByteBuf(PacketByteBuf buf, int size) {
+    public static List<OptionalStack> decodeByteBuf(FriendlyByteBuf buf, int size) {
         List<OptionalStack> stacks = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
             stacks.add(fromByteBuf(buf));
@@ -80,7 +80,7 @@ public class OptionalStack {
                 cachedStacks = Collections.singletonList(stack);
             } else {
                 var entries = RegistryHelper.getEntries(tag.get());
-                entries.ifPresent(registryEntries -> cachedStacks = registryEntries.stream().map(RegistryEntry::value).map(item -> new ItemStack(item, count)).collect(Collectors.toList()));
+                entries.ifPresent(registryEntries -> cachedStacks = registryEntries.stream().map(Holder::value).map(item -> new ItemStack(item, count)).collect(Collectors.toList()));
             }
         }
         return cachedStacks;
@@ -104,7 +104,7 @@ public class OptionalStack {
             return false;
         }
         else
-            return cachedStacks.stream().anyMatch(testStack -> ItemStack.areItemsEqual(testStack, stack));
+            return cachedStacks.stream().anyMatch(testStack -> ItemStack.isSameItem(testStack, stack));
     }
 
     public boolean contains(ItemStack stack) {
@@ -114,6 +114,6 @@ public class OptionalStack {
             return false;
         }
         else
-            return cachedStacks.stream().anyMatch(testStack -> ItemStack.areItemsEqual(testStack, stack) && stack.getCount() >= testStack.getCount());
+            return cachedStacks.stream().anyMatch(testStack -> ItemStack.isSameItem(testStack, stack) && stack.getCount() >= testStack.getCount());
     }
 }

@@ -1,8 +1,8 @@
 package de.dafuqs.matchbooks.recipe.matchbook;
 
 import com.google.gson.JsonObject;
-import net.minecraft.network.PacketByteBuf;
 import java.util.Optional;
+import net.minecraft.network.FriendlyByteBuf;
 
 /**
  * A factory, tasked with both creating and configuring Matches, and also building them from packets.
@@ -18,7 +18,7 @@ public abstract class MatchFactory<T extends Match> {
 
     public abstract T create(String key, JsonObject object);
 
-    public abstract T fromPacket(PacketByteBuf buf);
+    public abstract T fromPacket(FriendlyByteBuf buf);
 
     public static Optional<MatchFactory<?>> getForPacket(String name) {
         return MatchRegistry.getOptional(name);

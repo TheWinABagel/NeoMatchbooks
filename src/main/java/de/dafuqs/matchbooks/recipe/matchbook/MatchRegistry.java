@@ -2,8 +2,8 @@ package de.dafuqs.matchbooks.recipe.matchbook;
 
 import de.dafuqs.matchbooks.Matchbooks;
 import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
-import net.minecraft.util.Identifier;
 import java.util.Optional;
+import net.minecraft.resources.ResourceLocation;
 
 public class MatchRegistry {
 
@@ -13,7 +13,7 @@ public class MatchRegistry {
      * Registers a Match factory.
      * @param id ensure this matches the name of the factory.
      */
-    public static void register(Identifier id, MatchFactory<?> factory) {
+    public static void register(ResourceLocation id, MatchFactory<?> factory) {
         var name = id.toString();
 
         if(!name.equals(factory.name)) {

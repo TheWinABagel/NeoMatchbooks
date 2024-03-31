@@ -4,21 +4,27 @@ import com.google.gson.*;
 import com.google.gson.stream.MalformedJsonException;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import de.dafuqs.matchbooks.Matchbooks;
+import de.dafuqs.matchbooks.recipe.matchbook.MatchFactory;
 import de.dafuqs.matchbooks.recipe.matchbook.MatchRegistry;
 import de.dafuqs.matchbooks.recipe.matchbook.Matchbook;
-import net.minecraft.item.*;
+import de.dafuqs.matchbooks.recipe.matchbook.Matchbook.Builder;
+import de.dafuqs.matchbooks.recipe.matchbook.Matchbook.Mode;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.*;
-import net.minecraft.recipe.Ingredient;
-import net.minecraft.recipe.ShapedRecipe;
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.tag.TagKey;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.JsonHelper;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.TagKey;
+import net.minecraft.util.GsonHelper;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.item.crafting.ShapedRecipe;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @SuppressWarnings("unused")
 public class RecipeParser {
@@ -36,7 +42,7 @@ public class RecipeParser {
     }
 
     public static ItemStack stackFromJson(JsonObject json, String elementName) {
-        Item item = Registries.ITEM.get(Identifier.tryParse(json.get(elementName).getAsString()));
+        Item item = BuiltInRegistries.ITEM.get(ResourceLocation.tryParse(json.get(elementName).getAsString()));
         int count = json.has(COUNT) ? json.get("count").getAsInt() : 1;
         return item != Items.AIR ? new ItemStack(item, count) : ItemStack.EMPTY;
     }
@@ -48,7 +54,7 @@ public class RecipeParser {
     public static IngredientStack ingredientStackFromJson(JsonObject json) {
         Ingredient ingredient = json.has("ingredient") ? Ingredient.fromJson(json.getAsJsonObject("ingredient")) : Ingredient.fromJson(json);
         var matchbook = Matchbook.empty();
-        NbtCompound recipeViewNbt = null;
+        CompoundTag recipeViewNbt = null;
         int count = json.has(COUNT) ? json.get(COUNT).getAsInt() : 1;
 
         if (json.has(MATCHBOOK)) {
@@ -61,7 +67,7 @@ public class RecipeParser {
 
         if (json.has("recipeViewNbt")) {
             try {
-                recipeViewNbt = NbtHelper.fromNbtProviderString(json.get("recipeViewNbt").getAsString());
+                recipeViewNbt = NbtUtils.snbtToStructure(json.get("recipeViewNbt").getAsString());
             } catch (CommandSyntaxException e) {
                 Matchbooks.LOGGER.error("Relayed exception: " + e);
             }
@@ -88,12 +94,12 @@ public class RecipeParser {
     public static OptionalStack optionalStackFromJson(JsonObject json) throws MalformedJsonException {
         int count = json.has(COUNT) ? json.get(COUNT).getAsInt() : 1;
         if(json.has(ITEM)) {
-            Item item = Registries.ITEM.get(Identifier.tryParse(json.get("item").getAsString()));
+            Item item = BuiltInRegistries.ITEM.get(ResourceLocation.tryParse(json.get("item").getAsString()));
             return item != Items.AIR ? new OptionalStack(new ItemStack(item, count), count) : OptionalStack.EMPTY;
         }
         else if(json.has("tag")) {
-            var tagId = Identifier.tryParse(json.get("tag").getAsString());
-            var tag = TagKey.of(Registries.ITEM.getKey(), tagId);
+            var tagId = ResourceLocation.tryParse(json.get("tag").getAsString());
+            var tag = TagKey.create(BuiltInRegistries.ITEM.key(), tagId);
             return !RegistryHelper.isTagEmpty(tag) ? new OptionalStack(tag, count) : OptionalStack.EMPTY;
         }
         else {
@@ -147,26 +153,26 @@ public class RecipeParser {
      * @return An ItemStack with nbt data, like specified in the json
      */
     public static ItemStack getItemStackWithNbtFromJson(JsonObject json) {
-        Item item = ShapedRecipe.getItem(json);
+        Item item = ShapedRecipe.itemFromJson(json);
         if (json.has("data")) {
             throw new JsonParseException("Disallowed data tag found");
         }
 
-        int count = JsonHelper.getInt(json, COUNT, 1);
+        int count = GsonHelper.getAsInt(json, COUNT, 1);
         if (count < 1) {
             throw new JsonSyntaxException("Invalid output count: " + count);
         }
 
         ItemStack stack = new ItemStack(item, count);
-        String nbt = JsonHelper.getString(json, "nbt", "");
+        String nbt = GsonHelper.getAsString(json, "nbt", "");
         if(nbt.isEmpty()) {
             return stack;
         }
 
         try {
-            NbtCompound compound = NbtHelper.fromNbtProviderString(nbt);
+            CompoundTag compound = NbtUtils.snbtToStructure(nbt);
             compound.remove("palette");
-            stack.setNbt(compound);
+            stack.setTag(compound);
         } catch (CommandSyntaxException e) {
             throw new JsonSyntaxException("Invalid output nbt: " + nbt);
         }
@@ -174,21 +180,21 @@ public class RecipeParser {
         return stack;
     }
 
-    public static JsonElement asJson(NbtElement nbt) {
+    public static JsonElement asJson(Tag nbt) {
         if (nbt == null) {
             return JsonNull.INSTANCE;
         }
-        if (nbt instanceof NbtString s) return new JsonPrimitive(s.asString());
-        if (nbt instanceof NbtByte b) return new JsonPrimitive(b.byteValue() == 1);
-        if (nbt instanceof AbstractNbtNumber n) return new JsonPrimitive(n.numberValue());
-        if (nbt instanceof AbstractNbtList<?> l) {
+        if (nbt instanceof StringTag s) return new JsonPrimitive(s.getAsString());
+        if (nbt instanceof ByteTag b) return new JsonPrimitive(b.getAsByte() == 1);
+        if (nbt instanceof NumericTag n) return new JsonPrimitive(n.getAsNumber());
+        if (nbt instanceof CollectionTag<?> l) {
             JsonArray arr =  new JsonArray();
             l.stream().map(RecipeParser::asJson).forEach(arr::add);
             return arr;
         }
-        if (nbt instanceof NbtCompound c) {
+        if (nbt instanceof CompoundTag c) {
             JsonObject o = new JsonObject();
-            c.getKeys().forEach(k -> o.add(k, asJson(c.get(k))));
+            c.getAllKeys().forEach(k -> o.add(k, asJson(c.get(k))));
             return o;
         }
         return null;

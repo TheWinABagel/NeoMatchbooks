@@ -1,32 +1,32 @@
 package de.dafuqs.matchbooks.recipe;
 
 import com.google.gson.JsonObject;
-import net.minecraft.inventory.RecipeInputInventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.network.PacketByteBuf;
-import net.minecraft.recipe.RecipeSerializer;
-import net.minecraft.recipe.ShapelessRecipe;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.collection.DefaultedList;
+import net.minecraft.core.NonNullList;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.inventory.CraftingContainer;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.RecipeSerializer;
+import net.minecraft.world.item.crafting.ShapelessRecipe;
 
-public class ItemDamagingRecipe<C extends RecipeInputInventory> extends ShapelessRecipe {
+public class ItemDamagingRecipe<C extends CraftingContainer> extends ShapelessRecipe {
 
     public ItemDamagingRecipe(ShapelessRecipe parent) {
-        super(parent.getId(), parent.getGroup(), parent.getCategory(), parent.getOutput(null), parent.getIngredients());
+        super(parent.getId(), parent.getGroup(), parent.category(), parent.getResultItem(null), parent.getIngredients());
     }
 
     @Override
-    public DefaultedList<ItemStack> getRemainder(RecipeInputInventory inventory) {
-        DefaultedList<ItemStack> defaultedList = DefaultedList.ofSize(inventory.size(), ItemStack.EMPTY);
+    public NonNullList<ItemStack> getRemainingItems(CraftingContainer inventory) {
+        NonNullList<ItemStack> defaultedList = NonNullList.withSize(inventory.getContainerSize(), ItemStack.EMPTY);
         for (int i = 0; i < defaultedList.size(); ++i) {
-            ItemStack stack = inventory.getStack(i);
-            if (stack.getItem().isDamageable() && stack.getDamage() + 1 < stack.getMaxDamage()) { // Override damageable, fallback onto remainders
+            ItemStack stack = inventory.getItem(i);
+            if (stack.getItem().canBeDepleted() && stack.getDamageValue() + 1 < stack.getMaxDamage()) { // Override damageable, fallback onto remainders
                 stack = stack.copy();
-                stack.setDamage(stack.getDamage() + 1); // Damage item by one
+                stack.setDamageValue(stack.getDamageValue() + 1); // Damage item by one
                 defaultedList.set(i, stack);
-            } else if (stack.getItem().hasRecipeRemainder()) {
-                assert stack.getItem().getRecipeRemainder() != null;
-                defaultedList.set(i, new ItemStack(stack.getItem().getRecipeRemainder()));
+            } else if (stack.getItem().hasCraftingRemainingItem()) {
+                assert stack.getItem().getCraftingRemainingItem() != null;
+                defaultedList.set(i, new ItemStack(stack.getItem().getCraftingRemainingItem()));
             }
         }
         return defaultedList;
@@ -34,21 +34,21 @@ public class ItemDamagingRecipe<C extends RecipeInputInventory> extends Shapeles
 
     @Override
     public RecipeSerializer<?> getSerializer() {
-        return Serializer.INSTANCE;
+        return de.dafuqs.matchbooks.recipe.ItemDamagingRecipe.Serializer.INSTANCE;
     }
 
     public static class Serializer extends ShapelessRecipe.Serializer {
 
-        public static final Serializer INSTANCE = new Serializer();
+        public static final de.dafuqs.matchbooks.recipe.ItemDamagingRecipe.Serializer INSTANCE = new de.dafuqs.matchbooks.recipe.ItemDamagingRecipe.Serializer();
 
         @Override
-        public ShapelessRecipe read(Identifier identifier, JsonObject jsonObject) {
-            return new ItemDamagingRecipe<>(super.read(identifier, jsonObject));
+        public ShapelessRecipe fromJson(ResourceLocation identifier, JsonObject jsonObject) {
+            return new ItemDamagingRecipe<>(super.fromJson(identifier, jsonObject));
         }
 
         @Override
-        public ShapelessRecipe read(Identifier identifier, PacketByteBuf packetByteBuf) {
-            return new ItemDamagingRecipe<>(super.read(identifier, packetByteBuf));
+        public ShapelessRecipe fromNetwork(ResourceLocation identifier, FriendlyByteBuf packetByteBuf) {
+            return new ItemDamagingRecipe<>(super.fromNetwork(identifier, packetByteBuf));
         }
     }
 }

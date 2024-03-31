@@ -3,8 +3,8 @@ package de.dafuqs.matchbooks.recipe.matchbook;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import de.dafuqs.matchbooks.recipe.RecipeParser;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.network.PacketByteBuf;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.FriendlyByteBuf;
 
 /**
  * Inclusive.
@@ -20,7 +20,7 @@ public class IntRangeMatch extends Match {
     }
 
     @Override
-    boolean matches(NbtCompound nbt) {
+    boolean matches(CompoundTag nbt) {
         if(nbt != null && nbt.contains(key)) {
             var testInt = nbt.getInt(key);
             return max >= testInt && testInt >= min;
@@ -36,7 +36,7 @@ public class IntRangeMatch extends Match {
     }
 
     @Override
-    void configure(PacketByteBuf buf) {
+    void configure(FriendlyByteBuf buf) {
         min = buf.readInt();
         max = buf.readInt();
     }
@@ -52,7 +52,7 @@ public class IntRangeMatch extends Match {
     }
 
     @Override
-    void write(PacketByteBuf buf) {
+    void write(FriendlyByteBuf buf) {
         buf.writeInt(min);
         buf.writeInt(max);
     }
@@ -72,8 +72,8 @@ public class IntRangeMatch extends Match {
         }
 
         @Override
-        public IntRangeMatch fromPacket(PacketByteBuf buf) {
-            var match = new IntRangeMatch(name, buf.readString());
+        public IntRangeMatch fromPacket(FriendlyByteBuf buf) {
+            var match = new IntRangeMatch(name, buf.readUtf());
             match.configure(buf);
 
             return match;

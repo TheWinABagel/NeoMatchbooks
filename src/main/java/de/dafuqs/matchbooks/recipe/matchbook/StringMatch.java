@@ -3,8 +3,8 @@ package de.dafuqs.matchbooks.recipe.matchbook;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import de.dafuqs.matchbooks.recipe.RecipeParser;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.network.PacketByteBuf;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.FriendlyByteBuf;
 
 public class StringMatch extends Match {
     public static final String TYPE = "string";
@@ -16,7 +16,7 @@ public class StringMatch extends Match {
     }
 
     @Override
-    boolean matches(NbtCompound nbt) {
+    boolean matches(CompoundTag nbt) {
         if(nbt != null && nbt.contains(key)) {
             return nbt.getString(key).equals(targetString);
         }
@@ -30,8 +30,8 @@ public class StringMatch extends Match {
     }
 
     @Override
-    void configure(PacketByteBuf buf) {
-        targetString = buf.readString();
+    void configure(FriendlyByteBuf buf) {
+        targetString = buf.readUtf();
     }
 
     @Override
@@ -44,8 +44,8 @@ public class StringMatch extends Match {
     }
 
     @Override
-    void write(PacketByteBuf buf) {
-        buf.writeString(targetString);
+    void write(FriendlyByteBuf buf) {
+        buf.writeUtf(targetString);
     }
 
     public static class Factory extends MatchFactory<StringMatch> {
@@ -63,8 +63,8 @@ public class StringMatch extends Match {
         }
 
         @Override
-        public StringMatch fromPacket(PacketByteBuf buf) {
-            var match = new StringMatch(name, buf.readString());
+        public StringMatch fromPacket(FriendlyByteBuf buf) {
+            var match = new StringMatch(name, buf.readUtf());
             match.configure(buf);
 
             return match;

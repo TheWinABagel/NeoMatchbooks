@@ -3,8 +3,8 @@ package de.dafuqs.matchbooks.recipe.matchbook;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import de.dafuqs.matchbooks.recipe.RecipeParser;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.network.PacketByteBuf;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.FriendlyByteBuf;
 
 public class ShortMatch extends Match {
     public static final String TYPE = "short";
@@ -16,7 +16,7 @@ public class ShortMatch extends Match {
     }
 
     @Override
-    boolean matches(NbtCompound nbt) {
+    boolean matches(CompoundTag nbt) {
         if(nbt != null && nbt.contains(key)) {
             return nbt.getShort(key) == targetShort;
         }
@@ -30,7 +30,7 @@ public class ShortMatch extends Match {
     }
 
     @Override
-    void configure(PacketByteBuf buf) {
+    void configure(FriendlyByteBuf buf) {
         targetShort = buf.readShort();
     }
 
@@ -44,7 +44,7 @@ public class ShortMatch extends Match {
     }
 
     @Override
-    void write(PacketByteBuf buf) {
+    void write(FriendlyByteBuf buf) {
         buf.writeShort(targetShort);
     }
 
@@ -63,8 +63,8 @@ public class ShortMatch extends Match {
         }
 
         @Override
-        public ShortMatch fromPacket(PacketByteBuf buf) {
-            var match = new ShortMatch(name, buf.readString());
+        public ShortMatch fromPacket(FriendlyByteBuf buf) {
+            var match = new ShortMatch(name, buf.readUtf());
             match.configure(buf);
 
             return match;
