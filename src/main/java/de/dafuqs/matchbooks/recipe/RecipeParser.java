@@ -4,29 +4,24 @@ import com.google.gson.*;
 import com.google.gson.stream.MalformedJsonException;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import de.dafuqs.matchbooks.Matchbooks;
-import de.dafuqs.matchbooks.recipe.matchbook.MatchFactory;
 import de.dafuqs.matchbooks.recipe.matchbook.MatchRegistry;
 import de.dafuqs.matchbooks.recipe.matchbook.Matchbook;
-import de.dafuqs.matchbooks.recipe.matchbook.Matchbook.Builder;
-import de.dafuqs.matchbooks.recipe.matchbook.Matchbook.Mode;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.*;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
-import net.minecraft.util.GsonHelper;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraft.world.item.crafting.ShapedRecipe;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 @SuppressWarnings("unused")
+@Deprecated(since = "1.20.4")
 public class RecipeParser {
     public static final String COUNT = "count";
     public static final String ITEM = "item";
@@ -52,7 +47,7 @@ public class RecipeParser {
     }
 
     public static IngredientStack ingredientStackFromJson(JsonObject json) {
-        Ingredient ingredient = json.has("ingredient") ? Ingredient.fromJson(json.getAsJsonObject("ingredient")) : Ingredient.fromJson(json);
+        Ingredient ingredient = json.has("ingredient") ? Ingredient.fromJson(json.getAsJsonObject("ingredient"), false) : Ingredient.fromJson(json, false);
         var matchbook = Matchbook.empty();
         CompoundTag recipeViewNbt = null;
         int count = json.has(COUNT) ? json.get(COUNT).getAsInt() : 1;
@@ -144,40 +139,6 @@ public class RecipeParser {
         }
 
         return builder.build(mode);
-    }
-
-    /**
-     * Parses an ItemStack json object with optional NBT data
-     * Can be used in RecipeSerializers to get ItemStacks with NBT as output
-     * @param json The JsonObject to parse
-     * @return An ItemStack with nbt data, like specified in the json
-     */
-    public static ItemStack getItemStackWithNbtFromJson(JsonObject json) {
-        Item item = ShapedRecipe.itemFromJson(json);
-        if (json.has("data")) {
-            throw new JsonParseException("Disallowed data tag found");
-        }
-
-        int count = GsonHelper.getAsInt(json, COUNT, 1);
-        if (count < 1) {
-            throw new JsonSyntaxException("Invalid output count: " + count);
-        }
-
-        ItemStack stack = new ItemStack(item, count);
-        String nbt = GsonHelper.getAsString(json, "nbt", "");
-        if(nbt.isEmpty()) {
-            return stack;
-        }
-
-        try {
-            CompoundTag compound = NbtUtils.snbtToStructure(nbt);
-            compound.remove("palette");
-            stack.setTag(compound);
-        } catch (CommandSyntaxException e) {
-            throw new JsonSyntaxException("Invalid output nbt: " + nbt);
-        }
-
-        return stack;
     }
 
     public static JsonElement asJson(Tag nbt) {

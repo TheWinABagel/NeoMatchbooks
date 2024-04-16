@@ -1,15 +1,15 @@
 package de.dafuqs.matchbooks.recipe;
 
 import de.dafuqs.matchbooks.Matchbooks;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.RegisterEvent;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.neoforge.registries.RegisterEvent;
 
 public class MatchbookRecipeTypes {
 
     @SubscribeEvent
     public static void registerSerializer(RegisterEvent e) {
-        e.register(ForgeRegistries.RECIPE_SERIALIZERS.getRegistryKey(),
+        e.register(BuiltInRegistries.RECIPE_SERIALIZER.key(),
                 helper -> helper.register(Matchbooks.id("item_damaging"), ItemDamagingRecipe.Serializer.INSTANCE));
     }
 }

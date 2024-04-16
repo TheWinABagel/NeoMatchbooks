@@ -1,6 +1,5 @@
 package de.dafuqs.matchbooks.recipe;
 
-import net.minecraftforge.registries.IForgeRegistry;
 import org.jetbrains.annotations.NotNull;
 import java.util.Optional;
 import net.minecraft.core.Holder;
@@ -16,10 +15,6 @@ public class RegistryHelper {
         return registry.getTagNames().filter(tagKey -> tagKey.location().equals(id)).findFirst();
     }
 
-    public static <T> Optional<TagKey<T>> tryGetTagKeyForge(IForgeRegistry<T> registry, ResourceLocation id) {
-        return registry.tags().getTagNames().filter(tagKey -> tagKey.location().equals(id)).findFirst();
-    }
-
     public static <T> Optional<? extends HolderSet<T>> getEntries(TagKey<T> tagKey) {
         return getRegistryOf(tagKey).getTag(tagKey);
     }
@@ -28,25 +23,12 @@ public class RegistryHelper {
         return registry.getResourceKey(object).map(registry::getHolderOrThrow);
     }
 
-    public static <T> Optional<Holder<T>> tryGetEntryForge(IForgeRegistry<T> registry, T object) {
-        return registry.getResourceKey(object).map(registry::getDelegateOrThrow);
-    }
-
     public static <T> boolean isObjectInTag(Registry<T> registry, ResourceLocation tagId, T object) {
         return tryGetTagKey(registry, tagId).map(tagKey -> isObjectInTag(registry, tagKey, object)).orElse(false);
     }
 
-    public static <T> boolean isObjectInTagForge(IForgeRegistry<T> registry, ResourceLocation tagId, T object) {
-        return tryGetTagKeyForge(registry, tagId).map(tagKey -> isObjectInTagForge(registry, tagKey, object)).orElse(false);
-    }
-
     public static <T> boolean isObjectInTag(Registry<T> registry, TagKey<T> tag, T object) {
         var entry = tryGetEntry(registry, object);
-        return entry.map(tRegistryEntry -> tRegistryEntry.is(tag)).orElse(false);
-    }
-
-    public static <T> boolean isObjectInTagForge(IForgeRegistry<T> registry, TagKey<T> tag, T object) {
-        var entry = tryGetEntryForge(registry, object);
         return entry.map(tRegistryEntry -> tRegistryEntry.is(tag)).orElse(false);
     }
 
