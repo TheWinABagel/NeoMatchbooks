@@ -1,12 +1,11 @@
 package de.dafuqs.matchbooks.recipe;
 
-import com.google.gson.*;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
+import com.mojang.serialization.JsonOps;
 import de.dafuqs.matchbooks.recipe.matchbook.Matchbook;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
+import net.minecraft.Util;
 import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
@@ -14,6 +13,15 @@ import net.minecraft.world.Container;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.level.ItemLike;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 @SuppressWarnings("unused")
 public final class IngredientStack {
@@ -84,7 +92,8 @@ public final class IngredientStack {
 
     public JsonElement toJson() {
         JsonObject main = new JsonObject();
-        main.add("ingredient", this.ingredient.toJson());
+        JsonElement ingredientElement = Util.getOrThrow(Ingredient.CODEC.encodeStart(JsonOps.INSTANCE, this.ingredient), IllegalStateException::new);
+        main.add("ingredient", ingredientElement);
         if (this.count > 1) main.add(RecipeParser.COUNT, new JsonPrimitive(this.count));
         if (!this.matchbook.isEmpty()) main.add(RecipeParser.MATCHBOOK, this.matchbook.toJson());
         if (this.recipeViewNbt.isPresent()) main.add("recipeViewNbt", RecipeParser.asJson(recipeViewNbt.get()));

@@ -1,9 +1,7 @@
 package de.dafuqs.matchbooks.recipe;
 
-import com.google.gson.JsonObject;
 import net.minecraft.core.NonNullList;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.inventory.CraftingContainer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeSerializer;
@@ -12,7 +10,7 @@ import net.minecraft.world.item.crafting.ShapelessRecipe;
 public class ItemDamagingRecipe<C extends CraftingContainer> extends ShapelessRecipe {
 
     public ItemDamagingRecipe(ShapelessRecipe parent) {
-        super(parent.getId(), parent.getGroup(), parent.category(), parent.getResultItem(null), parent.getIngredients());
+        super(parent.getGroup(), parent.category(), parent.getResultItem(null), parent.getIngredients());
     }
 
     @Override
@@ -42,14 +40,10 @@ public class ItemDamagingRecipe<C extends CraftingContainer> extends ShapelessRe
         public static final de.dafuqs.matchbooks.recipe.ItemDamagingRecipe.Serializer INSTANCE = new de.dafuqs.matchbooks.recipe.ItemDamagingRecipe.Serializer();
 
         @Override
-        public ShapelessRecipe fromJson(ResourceLocation identifier, JsonObject jsonObject) {
-            return new ItemDamagingRecipe<>(super.fromJson(identifier, jsonObject));
+        public ShapelessRecipe fromNetwork(FriendlyByteBuf buf) {
+            return new ItemDamagingRecipe<>(super.fromNetwork(buf));
         }
 
-        @Override
-        public ShapelessRecipe fromNetwork(ResourceLocation identifier, FriendlyByteBuf packetByteBuf) {
-            return new ItemDamagingRecipe<>(super.fromNetwork(identifier, packetByteBuf));
-        }
     }
 }
 
